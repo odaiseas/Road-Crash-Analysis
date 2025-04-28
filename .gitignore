@@ -1,0 +1,4 @@
+data/raw/*.xlsx
+data/crash_database.db
+__pycache__/
+.ipynb_checkpoints/
