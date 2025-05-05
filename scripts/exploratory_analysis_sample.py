@@ -203,9 +203,9 @@ plt.grid(axis="y", linestyle="--", alpha=0.7)
 plt.show()
 """Большое число регионов при небольшом районе данных дает ненадежные результаты: во многих регионах число погибших равно нулю или достигает 2-3 человек."""
 #%% Карта с числом ДТП по регионам
-"""Источник: https://github.com/timurkanaz/Russia_geojson_OSM/blob/master/GeoJson's/Countries/Russia_regions.geojson """
+"""Источник: https://github.com/hairymax/offline_russia_plotly/blob/main/data/russia_regions.geojson"""
 
-region_geodata = gpd.read_file("https://raw.githubusercontent.com/timurkanaz/Russia_geojson_OSM/master/GeoJson%27s/Countries/Russia_regions.geojson")
+region_geodata = gpd.read_file(r'../data/russia_regions.geojson')
 
 region_accidents = (
     sample_accidents
@@ -217,6 +217,7 @@ region_accidents = (
 )
 # Приводим названия регионов к общему формату 
 # Словарь для специфических замен, которые нельзя автоматизировать
+
 region_mapping = {
     'кемеровская область - кузбасс': 'кемеровская обл.',
     'республика адыгея (адыгея)': 'республика адыгея',
@@ -272,13 +273,89 @@ plt.show()
 #%% Карта с числом ДТП на 100 тысяч человек населения (социальный риск)
 
 # Считаем ДТП на население
-region_geodata["accident_rate"]=(region_geodata["accident_number"]/region_geodata["population"])*100000
+region_geodata["accident_rate"]=(region_geodata["accident_number"]/region_geodata["population"])*1000000
 
 # Визуализация карты
 fig, ax = plt.subplots(figsize=(12, 8))
-geo_df.plot(column="социальный_риск", cmap="Reds", linewidth=0.8, edgecolor="black",
+region_geodata.plot(column="accident_rate", cmap="Reds", linewidth=0.8, edgecolor="black",
             legend=True, ax=ax, legend_kwds={'shrink': 0.5})  # Уменьшаем шкалу (shrink=0.5)
 
 # Настройки карты
 ax.axis("off")  # Убираем оси
 plt.show()
+
+#%% Тяжесть ДТП по типам ДТП
+# Группируем ДТП и погибших по типам ДТП
+grouped_data = (
+    sample_accidents
+    .groupby(["category"])
+    .agg(
+        accident_number=("id", "size"),  # Количество ДТП
+        dead_count=("dead_count", "sum"),   # Сумма числа погибших
+        paticipant_count=("participants_count", "sum")
+        
+    )
+    .reset_index()
+)
+grouped_data.head()
+# Добавляем колонку "Погибших на ДТП"
+grouped_data["fatality_rate"] = 100*(grouped_data["dead_count"] / grouped_data["paticipant_count"])
+grouped_data["fatality_rate"] = grouped_data["fatality_rate"].round(1)
+# Создаем таблицу для числа ДТП
+# Сортируем данные по убыванию числа ДИП
+grouped_data = grouped_data.sort_values(by="accident_number", ascending=False).reset_index(drop=True)
+print(grouped_data)
+
+# Создаем таблицу для погибших на 100 участников
+# Сортируем данные по убыванию "Погибших на 100 участников"
+grouped_data = grouped_data.sort_values(by="fatality_rate", ascending=False).reset_index(drop=True)
+print(grouped_data)
+#%% ДТП по состоянию освещенности
+#Число ДТП по состоянию освещения
+
+# Группируем ДТП и погибших по регионам
+
+light_data = (
+    sample_accidents
+    .groupby(["light"])
+    .agg(
+        accident_number=("dead_count", "size"),  # Количество ДТП
+        dead_count=("dead_count", "sum")   # Сумма числа погибших
+    )
+    .reset_index()
+)
+
+# Добавляем колонку "Погибших на ДТП"
+light_data["fatality_rate"] = light_data["dead_count"] / light_data["accident_number"]
+# Сортируем данные по убыванию "количество_ДТП"
+light_data = light_data.sort_values(by="accident_number", ascending=False)
+
+# Построение столбчатой диаграммы по количеству ДТП
+plt.figure(figsize=(16, 6))
+plt.bar(light_data["light"], light_data["accident_number"], color="blue", alpha=0.7)
+
+# Убираем вертикальные линии сетки
+plt.grid(False)
+
+# Настройка осей
+plt.xticks(rotation=45, ha="right", fontsize=10)
+plt.ylabel("Число ДТП", fontsize=12)
+
+plt.show()
+
+# Сортируем данные по убыванию тяжести ДТП в зависимости от освезения
+light_data = light_data.sort_values(by="fatality_rate", ascending=False)
+# Построение столбчатой диаграммы по тяжести ДТП
+plt.figure(figsize=(16, 6))
+plt.bar(light_data["light"], light_data["fatality_rate"], color="blue", alpha=0.7)
+
+# Убираем вертикальные линии сетки
+plt.grid(False)
+
+# Настройка осей
+plt.xticks(rotation=45, ha="right", fontsize=10)
+plt.ylabel("Погибших на 1 ДТП", fontsize=12)
+
+plt.show()
+
+#%% Число и тяжесть ДТП по погодным условиям
