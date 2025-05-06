@@ -11,6 +11,7 @@ import pandas as pd
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import seaborn as sns
 import geopandas as gpd
 import calendar
 import locale
@@ -205,7 +206,9 @@ plt.show()
 #%% Карта с числом ДТП по регионам
 """Источник: https://github.com/hairymax/offline_russia_plotly/blob/main/data/russia_regions.geojson"""
 
-region_geodata = gpd.read_file(r'../data/russia_regions.geojson')
+#region_geodata = gpd.read_file(r'../data/russia_regions.geojson')
+region_geodata = gpd.read_file(r'C:/Users/admin/Road-Crash-Analysis/data/russia_regions.geojson')
+
 
 region_accidents = (
     sample_accidents
@@ -313,7 +316,7 @@ print(grouped_data)
 #%% ДТП по состоянию освещенности
 #Число ДТП по состоянию освещения
 
-# Группируем ДТП и погибших по регионам
+# Группируем ДТП и погибших по состоянию освещения
 
 light_data = (
     sample_accidents
@@ -343,7 +346,7 @@ plt.ylabel("Число ДТП", fontsize=12)
 
 plt.show()
 
-# Сортируем данные по убыванию тяжести ДТП в зависимости от освезения
+# Сортируем данные по убыванию тяжести ДТП в зависимости от освещения
 light_data = light_data.sort_values(by="fatality_rate", ascending=False)
 # Построение столбчатой диаграммы по тяжести ДТП
 plt.figure(figsize=(16, 6))
@@ -359,3 +362,258 @@ plt.ylabel("Погибших на 1 ДТП", fontsize=12)
 plt.show()
 
 #%% Число и тяжесть ДТП по погодным условиям
+
+# Группируем ДТП и погибших по состоянию освещения
+
+weather_data = (
+    sample_accidents
+    .groupby(["weather"])
+    .agg(
+        accident_number=("dead_count", "size"),  # Количество ДТП
+        dead_count=("dead_count", "sum")   # Сумма числа погибших
+    )
+    .reset_index()
+)
+
+# Добавляем колонку "Погибших на ДТП"
+weather_data["fatality_rate"] = weather_data["dead_count"] / weather_data["accident_number"]
+# Сортируем данные по убыванию "количество_ДТП"
+weather_data = weather_data.sort_values(by="accident_number", ascending=False)
+
+# Построение столбчатой диаграммы по количеству ДТП
+plt.figure(figsize=(16, 6))
+plt.bar(weather_data["weather"], weather_data["accident_number"], color="blue", alpha=0.7)
+
+# Убираем вертикальные линии сетки
+plt.grid(False)
+
+# Настройка осей
+plt.xticks(rotation=45, ha="right", fontsize=10)
+plt.ylabel("Число ДТП", fontsize=12)
+
+plt.show()
+
+# Сортируем данные по убыванию тяжести ДТП в зависимости от освезения
+weather_data = weather_data.sort_values(by="fatality_rate", ascending=False)
+# Построение столбчатой диаграммы по тяжести ДТП
+plt.figure(figsize=(16, 6))
+plt.bar(weather_data["weather"], weather_data["fatality_rate"], color="blue", alpha=0.7)
+
+# Убираем вертикальные линии сетки
+plt.grid(False)
+
+# Настройка осей
+plt.xticks(rotation=45, ha="right", fontsize=10)
+plt.ylabel("Погибших на 1 ДТП", fontsize=12)
+
+plt.show()
+
+# Сортируем данные по убыванию "Погибших на ДТП" в зависимости от погодных условий
+
+weather_data = weather_data.sort_values(by="fatality_rate", ascending=False)
+# Построение столбчатой диаграммы по тяжести ДТП
+plt.figure(figsize=(16, 6))
+plt.bar(weather_data["weather"], weather_data["fatality_rate"], color="blue", alpha=0.7)
+
+# Убираем вертикальные линии сетки
+plt.grid(False)
+
+# Настройка осей
+plt.xticks(rotation=45, ha="right", fontsize=10)
+plt.ylabel("Погибших на 1 ДТП", fontsize=12)
+
+plt.show()
+
+#%% Построение диаграммы для числа участников до 21 человек
+# Под вопросом полнота учета, насколько полно включают всех участников (например, пассажиров), или же только водителей транспортных средств и пешеходов, однако наличие ДТП с несколькими десятками участников свидетельствует как минимум о том, что иногда пассажиров включают.
+# Считаем частоту каждого значения participants_count
+value_counts = sample_accidents['participants_count'].value_counts().sort_index()
+
+# Фильтруем меньше 21 участника
+value_counts=value_counts[value_counts.index < 21]/1000000
+value_counts=value_counts.to_frame().reset_index()
+value_counts.index.name="Количество участников"
+# Переименовываем столбцы
+
+value_counts.columns = ["Количество участников", "Миллионов ДТП"]
+value_counts["Количество участников"] = value_counts["Количество участников"].astype(int)
+print(value_counts.head())
+print(type(value_counts["Количество участников"].iloc[0]))
+
+
+# Построение столбчатой диаграммы
+plt.figure(figsize=(10, 6))
+plt.bar(value_counts["Количество участников"], value_counts["Миллионов ДТП"], color='blue', edgecolor='black')
+# Указываем, что на оси X должны быть только целые числа
+plt.xticks(value_counts["Количество участников"])
+plt.xlabel('Количество участников')
+plt.ylabel('Миллионов ДТП')
+plt.grid(False)
+plt.show()
+
+#%% Построение диаграммы для числа погибших
+
+# Считаем частоту каждого значения dead_count
+value_counts = sample_accidents['dead_count'].value_counts().sort_index()
+# Построение столбчатой диаграммы
+plt.figure(figsize=(10, 6))
+plt.bar(value_counts.index, value_counts.values, color='blue', edgecolor='black')
+plt.xlabel('Количество погибших')
+plt.ylabel('Частота')
+
+# Убираем дробные значения на оси x
+plt.xticks(range(int(value_counts.index.min()), int(value_counts.index.max()) + 1))
+
+plt.grid(False)
+plt.ticklabel_format(style='plain', axis='y')  # Ось Y в обычном формате
+plt.show()
+
+#%% Построение диаграммы для числа пострадавших
+
+value_counts = sample_accidents['injured_count'].value_counts(normalize=False).sort_index()
+# Построение столбчатой диаграммы
+plt.figure(figsize=(10, 6))
+plt.bar(value_counts.index, value_counts.values, color='blue', edgecolor='black')
+plt.xlabel('Количество раненных')
+plt.ylabel('Частота')
+# Убираем дробные значения на оси x
+plt.xticks(range(int(value_counts.index.min()), int(value_counts.index.max()) + 1))
+
+plt.grid(False)
+plt.ticklabel_format(style='plain', axis='y')  # Ось Y в обычном формате
+plt.show()
+
+#%% Основные нарушения
+
+# Число аварий с нарушениями, нарушениями со стороны водителя и пешехода
+
+# Объединение датасетов по accident_id
+merged = pd.merge(
+    sample_participants,
+    sample_accidents.rename(columns={'id': 'accident_id'}),
+    on='accident_id',
+    how='inner'
+)
+
+# Всего аварий
+total_accidents = merged['accident_id'].nunique()
+
+# Аварии с нарушениями
+accidents_with_violation = merged[merged['violations'].notna()]['accident_id'].nunique()
+percent_with_violation = (accidents_with_violation / total_accidents) * 100
+
+# Аварии с нарушениями со стороны водителя
+driver_violations = merged[
+    (merged['violations'].notna()) &
+    (merged['role'] == 'Водитель')
+]['accident_id'].nunique()
+percent_driver_violation = (driver_violations / total_accidents) * 100
+
+# Аварии с нарушениями со стороны пешехода
+pedestrian_violations = merged[
+    (merged['violations'].notna()) &
+    (merged['role'] == 'Пешеход')
+]['accident_id'].nunique()
+percent_pedestrian_violation = (pedestrian_violations / total_accidents) * 100
+
+# Результат
+result = {
+    'Процент аварий с нарушениями': round(percent_with_violation, 2),
+    'Процент аварий с нарушениями со стороны водителя': round(percent_driver_violation, 2),
+    'Процент аварий с нарушениями со стороны пешехода': round(percent_pedestrian_violation, 2)
+}
+
+print(result)
+
+
+# Вывод таблицы с топ-10 нарушений по частоте
+violations = sample_participants['violations'].value_counts().reset_index().loc[0:9].rename(columns={'violations': 'Нарушение', 'count': 'Число ДТП'})
+print(violations)
+
+#%% Аварии по полу участников
+
+# Аварии по полу
+grouped_data = (
+    merged
+    .groupby(["gender"])
+    .agg(
+        accident_number=("accident_id", "nunique"),  # Количество уникальных ДТП
+        dead_count=("dead_count", "sum"),                   # Сумма числа погибших
+    )
+    .reset_index()
+)
+grouped_data["dead_per_100"] = ((grouped_data["dead_count"] / grouped_data["accident_number"])*100).round(1)
+print(grouped_data)
+
+# Учитываем пол исключительно водителей
+driver_data = merged[merged['role'] == 'Водитель']
+
+# Анализ по полу водителей
+grouped_driver_data = (
+    driver_data
+    .groupby(["gender"])
+    .agg(
+        accident_number=("accident_id", "nunique"),  # Количество уникальных ДТП
+        dead_count=("dead_count", "sum"),             # Сумма числа погибших
+    )
+    .reset_index()
+)
+
+grouped_driver_data["dead_per_100"] = ((grouped_driver_data["dead_count"] / grouped_driver_data["accident_number"]) * 100).round(1)
+print(grouped_driver_data)
+
+#%% Аварии по роли
+grouped_data = (
+    merged
+    .groupby(["role"])
+    .agg(
+        accident_number=("accident_id", "nunique"),  # Количество уникальных ДТП
+        dead_count=("dead_count", "sum"),                   # Сумма числа погибших
+    )
+    .reset_index()
+)
+grouped_data["Погибших на 100 ДТП"] = ((grouped_data["dead_count"] / grouped_data["accident_number"])*100).round(1)
+# Сортируем данные по убыванию "сумма_погибших"
+grouped_data = grouped_data.sort_values(by="dead_count", ascending=False)
+print(grouped_data.head())
+
+
+
+#%% Число ДТП по виду транспортного средства
+
+merged = sample_accidents.merge(sample_vehicles, left_on="id", right_on="accident_id", how="left")
+vehicle_type = merged['category_y'].value_counts().reset_index().loc[0:9].rename(columns={'category_y': 'Вид транспортного средства', 'count': 'Число ДТП'})
+print(vehicle_type)
+
+#%% Тяжесть ДТП в зависимости от возраста ТС
+
+merged['car_age']=merged['year']-merged['manufacture_year']
+car_age_data = (
+    merged
+    .groupby(["car_age"])
+    .agg(
+        accident_number=("dead_count", "size"),  # Количество ДТП
+        dead_number=("dead_count", "sum")   # Сумма числа погибших
+    )
+    .reset_index()
+)
+car_age_data["dead_per_100"] = (car_age_data["dead_number"] / car_age_data["accident_number"])*100
+# Создадим диаграмму
+car_age = car_age_data['car_age']
+fatalities = car_age_data['dead_per_100']
+"""
+# Фильтруем данные, исключая строки, где car_age > 100
+filtered_data = car_age_data[car_age_data['car_age'] < 50]
+"""
+
+# Настройка стиля seaborn
+sns.set(style="whitegrid")
+# Создание точечной диаграммы для отфильтрованных данных
+plt.figure(figsize=(10, 6))
+sns.scatterplot(x=car_age_data['car_age'], y=car_age_data['dead_per_100'], alpha=0.6, color='blue')
+plt.title('Зависимость числа погибших в ДТП от возраста ТС (возраст < 50 лет)')
+plt.xlabel('Возраст ТС (лет)')
+plt.ylabel('Погибших на 100 ДТП')
+# Сохраняем SVG
+plt.show()
+
