@@ -2,3 +2,5 @@ data/raw/*.xlsx
 data/crash_database.db
 __pycache__/
 .ipynb_checkpoints/data/crash_database.db
+notebooks/.ipynb_checkpoints/
+.ipynb_checkpoints/
