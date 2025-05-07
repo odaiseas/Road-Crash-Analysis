@@ -9,6 +9,7 @@ import pandas as pd
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import plotly.express as px
 import re
 import calendar
 
@@ -55,6 +56,64 @@ def plot_bar_chart(x, y, title, xlabel, ylabel, figsize=(16, 6), rotation=45):
     plt.grid(False)
     plt.title(title, fontsize=14)
     plt.show()
+    
+# Визуализация: интерактивный линейный график
+def plotly_line_chart(x, y, x_labels=None,
+                      title='', xlabel='', ylabel='',
+                      width=800, height=400):
+    """
+    Построить интерактивный линейный график через Plotly Express.
+    x — последовательность значений по оси X;
+    y — последовательность значений по оси Y;
+    x_labels — подписи для xticks (список строк) или None;
+    """
+    fig = px.line(
+        x=list(range(len(x) if x_labels else x)),
+        y=y,
+        markers=True,
+        title=title
+    )
+    fig.update_layout(
+        xaxis_title=xlabel,
+        yaxis_title=ylabel,
+        width=width,
+        height=height,
+        xaxis=dict(
+            tickmode='array',
+            tickvals=list(range(len(x_labels))) if x_labels else None,
+            ticktext=x_labels
+        ),
+        template='simple_white'
+    )
+    fig.show()
+    
+# Тяжесть ДТП по годам
+def compute_death_rate(
+    df: pd.DataFrame,
+    group_col: str = 'year',
+    value_col: str = 'dead_count'
+) -> pd.DataFrame:
+    """
+    Группирует df по столбцу group_col и возвращает DataFrame с тремя колонками:
+    - group_col (например, год)
+    - 'accident_count'    — число ДТП (size)
+    - 'death_count'       — сумма погибших (sum)
+    - 'deaths_per_accident' — отношение погибших к числу ДТП
+    """
+    result = (
+        df
+        .groupby(group_col)
+        .agg(
+            accident_count=(value_col, 'size'),
+            death_count   =(value_col, 'sum')
+        )
+        .reset_index()
+    )
+    result['deaths_per_accident'] = (
+        result['death_count'] / result['accident_count']
+    )
+    return result
+
 
 # Работа с геоданными
 def load_and_merge_geodata(geofile_path, accidents_data, region_col="region"):
