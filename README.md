@@ -32,6 +32,11 @@
 
 2. Запустите скрипт для создания выборки:
    python scripts/create_sample.py
+   
+3. Запустите ноутбук для анализа:
+   jupyter notebook notebooks/02_exploratory_analysis_sample.ipynb
+   
+Этот ноутбук работает с выборкой (sample_accidents.csv, sample_participants.csv, sample_vehicles.csv) и проводит описательную статистику.
 
 ## Текущий прогресс:
 
