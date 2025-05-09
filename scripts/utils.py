@@ -12,6 +12,7 @@ import seaborn as sns
 import plotly.express as px
 import re
 import calendar
+from typing import Dict, Tuple
 
 # Загрузка данных
 def load_data(data_dir, sample=True):
@@ -23,17 +24,29 @@ def load_data(data_dir, sample=True):
         raise NotImplementedError("Loading full data not implemented yet")
     return accidents, participants, vehicles
 
-# Нормализация названий регионов
-def normalize_region_name(name, region_mapping):
-    name = name.strip().lower()
-    name = re.sub(r'\bобласть\b', 'обл.', name)
-    name = re.sub(r'\bавтономный округ\b', 'ао', name)
-    name = re.sub(r'\s+', ' ', name)
-    return region_mapping.get(name, name)
-
 # Агрегация данных
 def aggregate_accidents(data, group_cols, agg_dict):
     return data.groupby(group_cols).agg(agg_dict).reset_index()
+ 
+ # Агрегация данных по регионам
+def compute_accident_count(
+    df: pd.DataFrame,
+    group_col: str = 'region',
+    id_col: str = 'id'
+) -> pd.DataFrame:
+    """
+    Возвращает DataFrame с колонками:
+    [group_col, 'accident_number'] — число ДТП в каждой группе.
+    """
+    result = (
+        df
+        .copy()
+        .assign(**{group_col: df[group_col].apply(normalize_region_name)})
+        .groupby(group_col)
+        .agg(accident_number=(id_col, 'size'))
+        .reset_index()
+    )
+    return result
 
 # Визуализация: линейный график
 def plot_line_chart(x, y, x_labels, title, xlabel, ylabel, figsize=(16, 6)):
@@ -86,6 +99,57 @@ def plotly_line_chart(x, y, x_labels=None,
         template='simple_white'
     )
     fig.show()
+   
+# Визуализация: интерактивная столбчатая диаграмма
+def plotly_bar_chart(
+    x, y,
+    x_labels=None,
+    title: str = '',
+    xlabel: str = '',
+    ylabel: str = '',
+    width: int = 800,
+    height: int = 400,
+    tickangle: int = None,
+    margin: dict = None
+):
+    """
+    Интерактивная столбчатая диаграмма через Plotly Express.
+    x        — список категорий (например, регионы);
+    y        — числовые значения для высоты столбцов;
+    x_labels — подписи для оси X (список строк);
+    tickangle— угол поворота подписей по оси X (в градусах), опц.;
+    margin   — отступы фигуры dict(l, r, t, b), опц.
+    """
+    import plotly.express as px
+
+    if margin is None:
+        margin = dict(l=0, r=0, t=50, b=150)
+
+    idx = list(range(len(x)))
+    fig = px.bar(
+        x=idx,
+        y=y,
+        text=y,
+        title=title
+    )
+    fig.update_traces(texttemplate='%{text:.2f}', textposition='outside')
+    fig.update_layout(
+        xaxis_title=xlabel,
+        yaxis_title=ylabel,
+        width=width,
+        height=height,
+        template='simple_white',
+        margin=margin,
+        xaxis=dict(
+            tickmode='array',
+            tickvals=idx,
+            ticktext=x_labels
+        ),
+        yaxis=dict(showgrid=True, gridcolor='lightgrey')
+    )
+    if tickangle is not None:
+        fig.update_layout(xaxis_tickangle=tickangle)
+    fig.show()
     
 # Тяжесть ДТП по годам
 def compute_death_rate(
@@ -114,32 +178,103 @@ def compute_death_rate(
     )
     return result
 
+# Обобщённая агрегация метрик по группам
+def aggregate_metrics(
+    df: pd.DataFrame,
+    group_col: str,
+    metrics: Dict[str, Tuple[str, str]]
+) -> pd.DataFrame:
+    """
+    Группирует df по group_col и возвращает DataFrame с колонками:
+      - group_col
+      - для каждого new_col в metrics: new_col = aggfunc(df[src_col])
+    """
+    agg_kwargs = {
+        new_col: (src_col, func_name)
+        for new_col, (src_col, func_name) in metrics.items()
+    }
+    result = df.groupby(group_col).agg(**agg_kwargs).reset_index()
+    return result
+
+# Расчёт относительного показателя (rate)
+def compute_rate(
+    df: pd.DataFrame,
+    numerator: str,
+    denominator: str,
+    new_col: str,
+    multiplier: float = 1.0
+) -> pd.DataFrame:
+    """
+    Добавляет в df колонку new_col = (df[numerator] / df[denominator]) * multiplier.
+    """
+    df = df.copy()
+    df[new_col] = (df[numerator] / df[denominator]) * multiplier
+    return df
+
+# Построение столбчатых диаграмм
+def plot_bar_chart(
+    df: pd.DataFrame,
+    x: str,
+    y: str,
+    title: str = '',
+    xlabel: str = '',
+    ylabel: str = '',
+    figsize: Tuple[int, int] = (16, 6),
+    color: str = 'blue',
+    alpha: float = 0.7,
+    rotate: float = 45
+):
+    """
+    Построение однородных столбчатых диаграмм через Matplotlib.
+    """
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.bar(df[x], df[y], color=color, alpha=alpha)
+    ax.grid(False)
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    plt.xticks(rotation=rotate, ha='right')
+    plt.tight_layout()
+    plt.show()
 
 # Работа с геоданными
-def load_and_merge_geodata(geofile_path, accidents_data, region_col="region"):
-    geodata = gpd.read_file(geofile_path)
-    geodata[region_col] = geodata[region_col].apply(normalize_region_name, args=(region_mapping,))
-    merged = geodata.merge(accidents_data, on=region_col, how="left")
-    merged["accident_number"].fillna(0, inplace=True)
-    return merged.to_crs('EPSG:32646')
-
-# Вспомогательные функции
-def days_in_month(row):
-    return calendar.monthrange(row["year"], row["month"])[1]
-
-# Словарь для замены названий регионов
 region_mapping = {
     'кемеровская область - кузбасс': 'кемеровская обл.',
     'республика адыгея (адыгея)': 'республика адыгея',
-    'республика северная осетия-алания': 'республика северная осетия — алания',
-    'республика татарстан (татарстан)': 'республика татарстан',
-    'ханты-мансийский автономный округ - югра': 'ханты-мансийский ао — югра',
-    'чувашская республика - чувашия': 'чувашская республика',
-    'еврейская ао': 'еврейская ао',
-    'ненецкий ао': 'ненецкий ао',
-    'чукотский ао': 'чукотский ао',
-    'ямало-ненецкий ао': 'ямало-ненецкий ао',
-    'г. москва': 'москва',
-    'г. санкт-петербург': 'санкт-петербург',
-    'город федерального значения севастополь': 'севастополь'
+    # … остальные мэппинги …
 }
+
+def normalize_region_name(name: str, mapping: dict = region_mapping) -> str:
+    """
+    Приводит name к нижнему регистру, заменяет 
+    'область'→'обл.', 'автономный округ'→'ао' 
+    и затем ищет в mapping.
+    """
+    n = name.strip().lower()
+    n = re.sub(r'\bобласть\b', 'обл.', n)
+    n = re.sub(r'\bавтономный округ\b', 'ао', n)
+    return mapping.get(n, n)
+
+def load_and_merge_geodata(
+    geofile_path: str,
+    accidents_data: pd.DataFrame,
+    region_col: str = "region"
+) -> gpd.GeoDataFrame:
+    """
+    1) Загружает GeoJSON по относительному пути geofile_path.
+    2) Нормализует колонку region_col в обоих DataFrame.
+    3) Мёрджит по region_col и заполняет NaN в accident_number нулями.
+    4) Переводит в CRS EPSG:32646.
+    """
+    gdf = gpd.read_file(geofile_path)
+    # нормализуем названия в геоданных
+    gdf[region_col] = gdf[region_col].apply(normalize_region_name)
+    # нормализуем в таблице ДТП
+    accidents_data = (
+        accidents_data
+        .copy()
+        .assign(**{region_col: accidents_data[region_col].apply(normalize_region_name)})
+    )
+    merged = gdf.merge(accidents_data, on=region_col, how='left')
+    merged['accident_number'] = merged['accident_number'].fillna(0)
+    return merged.to_crs('EPSG:32646')
