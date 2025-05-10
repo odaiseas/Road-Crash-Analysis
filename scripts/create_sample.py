@@ -26,7 +26,7 @@ participants = pd.read_csv(participants_download_url, sep=';')
 vehicles = pd.read_csv(vehicles_download_url, sep=';')
 
 # Создание SQLite базы
-conn = sqlite3.connect('C:/Users/Admin/Road-Crash-Analysis/data/crash_database.db')
+conn = sqlite3.connect('/data/crash_database.db')
 
 # Загрузка данных в SQLite
 accidents.to_sql('accidents', conn, if_exists='replace', index=False)

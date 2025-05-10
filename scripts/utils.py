@@ -278,3 +278,34 @@ def load_and_merge_geodata(
     merged = gdf.merge(accidents_data, on=region_col, how='left')
     merged['accident_number'] = merged['accident_number'].fillna(0)
     return merged.to_crs('EPSG:32646')
+    
+# Загрузка полного набора данных в SQLite
+def load_full_data_to_sqlite(acc_url, part_url, veh_url, db_path):
+    """Скачивает CSV с Яндекс.Диска, сохраняет в sqlite и возвращает соединение."""
+    import sqlite3, pandas as pd, requests
+    conn = sqlite3.connect(db_path)
+    for public_url, table in [(acc_url, 'accidents'),
+                              (part_url,'participants'),
+                              (veh_url, 'vehicles')]:
+        href = requests.get(
+            "https://cloud-api.yandex.net/v1/disk/public/resources/download",
+            params={"public_key": public_url}
+        ).json()["href"]
+        pd.read_csv(href, sep=';') \
+          .to_sql(table, conn, if_exists='replace', index=False)
+    return conn
+    
+# Универсальный запуск SQL-запроса
+def run_query(conn, sql: str) -> pd.DataFrame:
+    """Обёртка над pd.read_sql_query с единым логом."""
+    df = pd.read_sql_query(sql, conn)
+    print(f"Query returned {len(df)} rows")
+    return df
+    
+# Сохранение графиков
+def save_png(fig, path: str, dpi=300):
+    fig.tight_layout()
+    fig.savefig(path, dpi=dpi)
+
+def save_html(fig, path: str):
+    fig.write_html(path)

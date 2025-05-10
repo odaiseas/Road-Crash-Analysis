@@ -577,8 +577,6 @@ grouped_data["Погибших на 100 ДТП"] = ((grouped_data["dead_count"] 
 grouped_data = grouped_data.sort_values(by="dead_count", ascending=False)
 print(grouped_data.head())
 
-
-
 #%% Число ДТП по виду транспортного средства
 
 merged = sample_accidents.merge(sample_vehicles, left_on="id", right_on="accident_id", how="left")
