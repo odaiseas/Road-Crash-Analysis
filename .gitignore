@@ -1,6 +1,12 @@
-data/raw/*.xlsx
+# SQLite база данных
+*.db
 data/crash_database.db
+
+# Python служебные файлы
+*.pyc
 __pycache__/
-.ipynb_checkpoints/data/crash_database.db
+
+# Jupyter
 notebooks/.ipynb_checkpoints/
 .ipynb_checkpoints/
+.virtual_documents/
