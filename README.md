@@ -52,7 +52,8 @@
 
 - `notebooks/` — Jupyter-ноутбуки:
   - `01_data_cleaning.ipynb` — очистка и предобработка выборки
-  - `02_exploratory_analysis_sample.ipynb` — разведывательный анализ на малом объёме данных  
+  - `02_exploratory_analysis_sample.ipynb` — разведывательный анализ на малом объёме данных
+      
     > Этот ноутбук предназначен для отладки кода и воспроизводимости на небольшой выборке
   - `03_exploratory_analysis_full.ipynb` — анализ всех данных с использованием SQLite
 
