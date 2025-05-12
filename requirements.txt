@@ -1,0 +1,16 @@
+# Основные библиотеки анализа данных
+numpy
+pandas
+requests
+
+# Визуализация
+matplotlib
+seaborn
+plotly
+
+# Работа с геоданными
+geopandas
+
+# Jupyter и интерактивная среда
+jupyter
+ipython
