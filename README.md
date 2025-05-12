@@ -11,6 +11,15 @@
 - Использование Jupyter Notebook для анализа
 - Работа с геоданными и GeoJSON
 
+## Лицензия
+
+Этот репозиторий не содержит единой лицензии на весь проект, так как включает данные с разными условиями использования.
+
+- Аналитический код и ноутбуки: MIT License (см. LICENSE.txt)
+- Данные ДТП: [Creative Commons BY 4.0](https://creativecommons.org/licenses/by/4.0/)  
+  Источник: https://tochno.st/datasets/traffic_accidents
+- GeoJSON-файл: лицензия не указана; включён как вспомогательный файл для визуализации. При необходимости удалите файл russia_regions.geojson и загрузите с оригинального источника: https://github.com/hairymax/offline_russia_plotly
+
 ## Данные
 
 ### Данные о ДТП
@@ -28,7 +37,7 @@
 
 **Russia regions GeoJSON**  
 Источник: [hairymax/offline_russia_plotly](https://github.com/hairymax/offline_russia_plotly/blob/main/data/russia_regions.geojson)  
-Лицензия: не указана (дата обращения 2025-05-09). Если появится — будет добавлена.
+Лицензия: не указана (дата обращения 2025-05-09). Если появится — будет добавлена. Файл включён только для целей визуализации. При необходимости вы можете загрузить файл напрямую с оригинального источника.
 
 ---
 
