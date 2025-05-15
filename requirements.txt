@@ -11,6 +11,10 @@ plotly
 # Работа с геоданными
 geopandas
 
+# Библиотеки ML и статистического моделирования
+sklearn
+statsmodels
+
 # Jupyter и интерактивная среда
 jupyter
 ipython
