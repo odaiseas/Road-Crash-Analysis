@@ -56,16 +56,15 @@
   - `russia_regions.geojson` — геоданные регионов России
 
 - `scripts/`
-  - `create_sample.py` — генерация выборки и базы SQLite
+  - `create_sample.py` — генерация выборки и базы SQLite, очистка и предобработка выборки
   - `utils.py` — вспомогательные функции, используемые в ноутбуках
 
 - `notebooks/` — Jupyter-ноутбуки:
-  - `01_data_cleaning.ipynb` — очистка и предобработка выборки
-  - `02_exploratory_analysis_sample.ipynb` — разведывательный анализ на малом объёме данных
+  - `01_exploratory_analysis_sample.ipynb` — разведывательный анализ на малом объёме данных
       
     > Этот ноутбук предназначен для отладки кода и воспроизводимости на небольшой выборке
-  - `03_exploratory_analysis_full.ipynb` — анализ всех данных с использованием SQLite
-  - `04_statistical_modeling.ipynb` — статистическое моделирование факторов аварийности: счётные модели регрессии
+  - `02_exploratory_analysis_full.ipynb` — анализ всех данных с использованием SQLite
+  - `03_statistical_modeling.ipynb` — статистическое моделирование факторов аварийности: счётные модели регрессии
 
 - `outputs/`
   - `figures/` — сохранённые статичные графики
@@ -84,7 +83,8 @@
 
 Работа с базой реализована в:
 - `scripts/create_sample.py`
-- `notebooks/03_exploratory_analysis_full.ipynb`
+- `notebooks/02_exploratory_analysis_full.ipynb`
+- `notebooks/03_statistical_modeling.ipynb`
 
 ---
 
@@ -94,25 +94,21 @@
    ```bash
    pip install -r requirements.txt
 
-2. Запустите скрипт для создания выборки:
+2. Запустите скрипт для создания и очистки выборки (опционально):
    ```bash
    scripts/create_sample.py
    
-3. Запустите ноутбук для очистки и предобработки выборочных данных:
+3. Запустите ноутбук для анализа выборочных данных:
    ```bash
-   jupyter notebook notebooks/01_data_cleaning.ipynb
+   jupyter notebook notebooks/01_exploratory_analysis_sample.ipynb
    
-4. Запустите ноутбук для анализа выборочных данных:
+4. Запустите ноутбук для анализа полных данных:
    ```bash
-   jupyter notebook notebooks/02_exploratory_analysis_sample.ipynb
+   jupyter notebook notebooks/02_exploratory_analysis_full.ipynb
    
-5. Запустите ноутбук для анализа полных данных:
+5. Запустите ноутбук для статистического моделирования:
    ```bash
-   jupyter notebook notebooks/03_exploratory_analysis_full.ipynb
-   
-6. Запустите ноутбук для статистического моделирования:
-   ```bash
-   jupyter notebook notebooks/04_statistical_modeling.ipynb
+   jupyter notebook notebooks/03_statistical_modeling.ipynb
    
 > ⚠️ Файл `crash_database.db` создаётся при запуске `scripts/create_sample.py`, `notebooks/03_exploratory_analysis_full.ipynb` и `notebooks/04_statistical_modeling.ipynb` и может занимать до 2.5 ГБ. При необходимости его можно удалить вручную.
    
