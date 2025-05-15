@@ -302,6 +302,219 @@ def run_query(conn, sql: str) -> pd.DataFrame:
     print(f"Query returned {len(df)} rows")
     return df
     
+# SQL-запрос с объединением таблиц ДТП, участников и ТС
+SQL_ACCIDENT_FEATURES = """
+WITH drivers AS (
+    SELECT *
+    FROM participants
+    WHERE role = 'Водитель'
+),
+
+violating_drivers AS (
+    SELECT *
+    FROM drivers
+    WHERE violations IS NOT NULL AND TRIM(violations) != ''
+),
+
+selected_drivers AS (
+    SELECT accident_id, participant_id, gender, years_of_driving_experience,
+           CASE
+               WHEN COUNT(*) = 1 THEN 'single_violator'
+               ELSE 'multiple_violators'
+           END AS violator_case
+    FROM violating_drivers
+    GROUP BY accident_id
+),
+
+fallback_drivers AS (
+    SELECT accident_id, participant_id, gender, years_of_driving_experience,
+           'no_violator' AS violator_case
+    FROM drivers
+    WHERE accident_id NOT IN (SELECT DISTINCT accident_id FROM violating_drivers)
+),
+
+final_drivers AS (
+    SELECT * FROM selected_drivers
+    UNION ALL
+    SELECT * FROM fallback_drivers
+),
+
+driver_vehicles AS (
+    SELECT d.accident_id, p.vehicle_id
+    FROM final_drivers d
+    JOIN participants p ON d.participant_id = p.participant_id
+    WHERE p.vehicle_id IS NOT NULL
+),
+
+vehicle_years AS (
+    SELECT dv.accident_id,
+           AVG(v.year) AS avg_vehicle_year
+    FROM driver_vehicles dv
+    JOIN vehicles v ON dv.vehicle_id = v.vehicle_id
+    JOIN accidents a ON a.id = dv.accident_id
+    GROUP BY dv.accident_id
+),
+
+driver_aggregates AS (
+    SELECT accident_id,
+           COUNT(*) AS driver_count,
+           AVG(years_of_driving_experience) AS avg_experience,
+           CASE
+               WHEN SUM(CASE WHEN gender = 'Женский' THEN 1 ELSE 0 END) = 0 THEN 'all_male'
+               WHEN SUM(CASE WHEN gender = 'Мужской' THEN 1 ELSE 0 END) = 0 THEN 'all_female'
+               ELSE 'mixed'
+           END AS drivers_gender
+    FROM final_drivers
+    GROUP BY accident_id
+),
+
+pedestrian_flag AS (
+    SELECT accident_id,
+           MAX(CASE WHEN role = 'Пешеход' AND violations IS NOT NULL AND TRIM(violations) != '' THEN 1 ELSE 0 END) AS has_violating_pedestrian
+    FROM participants
+    GROUP BY accident_id
+)
+
+SELECT 
+    da.accident_id,
+    a.category,
+    a.datetime,
+    a.light,
+    a.weather,
+    a.participants_count,
+    a.dead_count,
+    a.injured_count,
+    da.driver_count,
+    da.avg_experience,
+    da.drivers_gender,
+    va.avg_vehicle_year,
+    pf.has_violating_pedestrian
+FROM driver_aggregates AS da
+JOIN accidents AS a ON da.accident_id = a.id  -- Добавляем JOIN с accidents
+LEFT JOIN vehicle_years AS va ON da.accident_id = va.accident_id
+LEFT JOIN pedestrian_flag AS pf ON da.accident_id = pf.accident_id;
+"""  
+  
+def fetch_accident_features(conn, sql=SQL_ACCIDENT_FEATURES):
+    """Выполняет заранее определённый SQL и возвращает DataFrame."""
+    import pandas as pd
+    return pd.read_sql_query(sql, conn)
+
+# Переменные для регрессионных моделей
+PREDICTORS = [
+    'remainder__adverse_weather',
+    'remainder__is_weekend',
+    'remainder__has_violating_pedestrian',
+    'remainder__drivers_gender_female',
+    'cat__light_Светлое время суток',
+    'cat__light_В темное время суток, освещение отсутствует',
+    'cat__light_Сумерки',
+    'cat__light_В темное время суток, освещение включено',
+    'cat__category_Столкновение',
+    'cat__category_Наезд на пешехода',
+    'cat__category_Наезд',
+    'cat__category_Опрокидывание',
+    'cat__category_Съезд с дороги',
+    'remainder__sin_time',
+    'remainder__cos_time',
+    'remainder__avg_experience',
+    'remainder__avg_vehicle_age'
+]
+
+TARGET    = 'remainder__dead_count'
+EXPOSURE  = 'remainder__participants_count'
+ 
+# Сплит и подготовка для Statsmodels
+def prepare_train_test(df, test_size=0.2, random_state=42):
+    from sklearn.model_selection import train_test_split
+    import statsmodels.api as sm
+
+    X = df[PREDICTORS].astype(float)
+    y = df[TARGET].astype(float)
+    exp = df[EXPOSURE].astype(float)
+
+    X_train, X_test, y_train, y_test, exp_train, exp_test = train_test_split(
+        X, y, exp, test_size=test_size, random_state=random_state
+    )
+    # добавляем константу
+    X_train_sm = sm.add_constant(X_train)
+    X_test_sm  = sm.add_constant(X_test)
+    return X_train_sm, X_test_sm, y_train, y_test, exp_train, exp_test 
+
+# Обучение регрессионных моделей
+# utils.py
+def fit_negative_binomial(X, y, exposure, method='newton', maxiter=100):
+    import numpy as np
+    import statsmodels.api as sm
+
+    model = sm.NegativeBinomial(endog=y, exog=X, offset=np.log(exposure))
+    return model.fit(method=method, maxiter=maxiter, disp=False)
+
+def fit_poisson(X, y, exposure):
+    import numpy as np
+    import statsmodels.api as sm
+
+    model = sm.GLM(
+        endog=y,
+        exog=X,
+        family=sm.families.Poisson(),
+        offset=np.log(exposure)
+    )
+    return model.fit()
+
+# Оценка качества регрессионных моделей
+def evaluate_mse(result, X_test, y_test, exposure_test):
+    from sklearn.metrics import mean_squared_error
+    import numpy as np
+
+    y_pred = result.predict(X_test, offset=np.log(exposure_test))
+    mask   = ~np.isnan(y_pred)
+    return mean_squared_error(y_test[mask], y_pred[mask])
+    
+# Таблица коэффициентов регрессионных моделей
+def coef_table(result, drop_vars=None, sort_by='P-value'):
+    import pandas as pd
+
+    df = pd.DataFrame({
+        'Variable': result.params.index,
+        'Coefficient': result.params.values,
+        'P-value': result.pvalues.values
+    }).round({'Coefficient': 3, 'P-value': 4})
+
+    df['Significant (p<0.05)'] = df['P-value'] < 0.05
+    # вынести const (и любые drop_vars) вниз и сортировать
+    main = df[~df['Variable'].isin(drop_vars or [])].sort_values(by=sort_by)
+    tail = df[df['Variable'].isin(drop_vars or [])]
+    return pd.concat([main, tail]).reset_index(drop=True)
+
+# Визуализация коэффициентов регрессионных моделей
+def plot_significant_coefs(coef_df, output_path, threshold=0.05, exclude=['const','alpha']):
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    import os
+
+    sig = coef_df[
+        (coef_df['Significant (p<0.05)']) &
+        (~coef_df['Variable'].isin(exclude))
+    ].copy()
+    sig = sig.reindex(sig['Coefficient'].sort_values(ascending=False).index)
+    sig['Effect'] = sig['Coefficient'].apply(lambda x: 'Increase' if x>0 else 'Decrease')
+
+    plt.figure(figsize=(10, 6))
+    sns.barplot(
+        y='Variable', x='Coefficient',
+        data=sig, orient='h',
+        hue='Effect', dodge=False, legend=False
+    )
+    plt.axvline(0, color='gray', linestyle='--')
+    plt.title('Significant coefficients (p < {})'.format(threshold))
+    plt.tight_layout()
+
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    plt.savefig(output_path, dpi=300)
+    plt.close()
+
+ 
 # Сохранение графиков
 def save_png(fig, path: str, dpi=300):
     fig.tight_layout()
