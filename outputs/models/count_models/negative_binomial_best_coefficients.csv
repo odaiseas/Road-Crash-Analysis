@@ -1,0 +1,20 @@
+Variable,Coefficient,P-value,Significant (p<0.05)
+remainder__adverse_weather,0.116,0.0,True
+remainder__cos_time,0.204,0.0,True
+remainder__sin_time,0.135,0.0,True
+cat__category_Съезд с дороги,0.916,0.0,True
+cat__category_Опрокидывание,1.004,0.0,True
+cat__category_Наезд,0.788,0.0,True
+cat__category_Наезд на пешехода,0.159,0.0,True
+remainder__avg_experience,0.007,0.0,True
+cat__category_Столкновение,0.375,0.0,True
+remainder__drivers_gender_female,-0.516,0.0,True
+remainder__has_violating_pedestrian,0.97,0.0,True
+remainder__is_weekend,0.11,0.0,True
+"cat__light_В темное время суток, освещение включено",-1.244,0.0,True
+remainder__avg_vehicle_age,0.01,0.0,True
+cat__light_Светлое время суток,-1.013,0.0007,True
+cat__light_Сумерки,-0.764,0.011,True
+"cat__light_В темное время суток, освещение отсутствует",-0.245,0.414,False
+const,-2.908,0.0,True
+alpha,1.065,0.0,True

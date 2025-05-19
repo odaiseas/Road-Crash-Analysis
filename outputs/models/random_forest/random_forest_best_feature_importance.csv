@@ -1,0 +1,21 @@
+Признак,Важность
+remainder__avg_experience,0.2149
+remainder__avg_vehicle_age,0.2047
+"cat__light_В темное время суток, освещение отсутствует",0.1132
+remainder__participants_count,0.0952
+remainder__cos_time,0.0744
+remainder__sin_time,0.0669
+remainder__has_violating_pedestrian,0.0477
+cat__light_Светлое время суток,0.031
+remainder__drivers_gender_female,0.0264
+"cat__light_В темное время суток, освещение включено",0.0196
+cat__category_Наезд на пешехода,0.0153
+cat__category_Столкновение,0.0149
+remainder__is_weekend,0.0148
+cat__category_Другой тип,0.0144
+remainder__adverse_weather,0.0123
+cat__category_Съезд с дороги,0.0112
+cat__category_Опрокидывание,0.0111
+cat__category_Наезд,0.0084
+cat__light_Сумерки,0.0035
+cat__light_Не установлено,0.0

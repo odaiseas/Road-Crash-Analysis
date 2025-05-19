@@ -1,0 +1,19 @@
+Признак,Коэффициент
+remainder__adverse_weather,0.0326
+remainder__is_weekend,0.0482
+remainder__has_violating_pedestrian,0.2661
+remainder__drivers_gender_female,-0.1027
+cat__light_Светлое время суток,-0.0
+"cat__light_В темное время суток, освещение отсутствует",0.4169
+cat__light_Сумерки,0.0389
+"cat__light_В темное время суток, освещение включено",-0.1046
+cat__category_Столкновение,-0.0428
+cat__category_Наезд на пешехода,0.0395
+cat__category_Наезд,0.1974
+cat__category_Опрокидывание,0.2641
+cat__category_Съезд с дороги,0.2265
+remainder__sin_time,0.1116
+remainder__cos_time,0.1692
+remainder__avg_experience,0.0648
+remainder__avg_vehicle_age,0.0785
+remainder__participants_count,1.251

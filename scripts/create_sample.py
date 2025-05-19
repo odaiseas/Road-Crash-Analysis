@@ -5,33 +5,47 @@ from io import StringIO
 import random
 import csv
 
-# Публичные ссылки на Яндекс.Диск с исходными данными
-accidents_url = "https://disk.yandex.ru/d/yPdgwafR_2xElg"
-participants_url = "https://disk.yandex.ru/d/YeyKLfXuETaEUQ"
-vehicles_url = "https://disk.yandex.ru/d/NJApFGWb85CWVQ"
+# Публичная ссылка на Яндекс.Диск с исходными данными
+archive_url = "https://disk.yandex.ru/d/RkPaOQyX7dDwEQ"
 
-# Функция для получения прямой ссылки на скачивание
-def get_yandex_download_url(public_url):
-    base_url = "https://cloud-api.yandex.net/v1/disk/public/resources/download"
-    response = requests.get(base_url, params={"public_key": public_url})
-    return response.json()["href"]
-
-# Загрузка данных
-accidents_download_url = get_yandex_download_url(accidents_url)
-participants_download_url = get_yandex_download_url(participants_url)
-vehicles_download_url = get_yandex_download_url(vehicles_url)
-
-accidents = pd.read_csv(accidents_download_url, sep=';')
-participants = pd.read_csv(participants_download_url, sep=';')
-vehicles = pd.read_csv(vehicles_download_url, sep=';')
-
+# Функция для загрузки данных в SQLite
+def load_archived_data_to_sqlite(archive_url, db_path):
+    """Скачивает архив с Яндекс.Диска, распаковывает и сохраняет CSV в SQLite."""
+    # Получаем ссылку для скачивания архива
+    response = requests.get(
+        "https://cloud-api.yandex.net/v1/disk/public/resources/download",
+        params={"public_key": archive_url}
+    ).json()["href"]
+    
+    # Скачиваем архив
+    archive_data = requests.get(response).content
+    
+    # Создаем подключение к базе данных
+    conn = sqlite3.connect(db_path)
+    
+    # Распаковываем архив и обрабатываем CSV файлы
+    with zipfile.ZipFile(io.BytesIO(archive_data)) as z:
+        # Предполагаем, что имена файлов в архиве соответствуют таблицам
+        file_to_table = {
+            'accidents.csv': 'accidents',
+            'participants.csv': 'participants',
+            'vehicles.csv': 'vehicles'
+        }
+        
+        for file_name in z.namelist():
+            if file_name in file_to_table:
+                with z.open(file_name) as f:
+                    # Читаем CSV и записываем в SQLite
+                    df = pd.read_csv(f, sep=';')
+                    df.to_sql(file_to_table[file_name], conn, if_exists='replace', index=False)
+    return conn
+    
 # Создание SQLite базы
-conn = sqlite3.connect('/data/crash_database.db')
-
-# Загрузка данных в SQLite
-accidents.to_sql('accidents', conn, if_exists='replace', index=False)
-participants.to_sql('participants', conn, if_exists='replace', index=False)
-vehicles.to_sql('vehicles', conn, if_exists='replace', index=False)
+archive_url = "https://disk.yandex.ru/d/RkPaOQyX7dDwEQ"
+conn = load_archived_data_to_sqlite(
+    archive_url,
+    db_path="../data/crash_database.db"
+)
 
 # Установка зерна для воспроизводимости
 random.seed(42)  # Устанавливаем зерно

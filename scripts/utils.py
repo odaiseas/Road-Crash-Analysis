@@ -13,6 +13,10 @@ import plotly.express as px
 import re
 import calendar
 from typing import Dict, Tuple
+import sqlite3
+import requests
+import zipfile
+import io
 
 # Загрузка данных
 def load_data(data_dir, sample=True):
@@ -23,12 +27,44 @@ def load_data(data_dir, sample=True):
     else:
         raise NotImplementedError("Loading full data not implemented yet")
     return accidents, participants, vehicles
+    
+# Загрузка архивированных данных
+def load_archived_data_to_sqlite(archive_url, db_path):
+    """Скачивает архив с Яндекс.Диска, распаковывает и сохраняет CSV в SQLite."""
+    # Получаем ссылку для скачивания архива
+    response = requests.get(
+        "https://cloud-api.yandex.net/v1/disk/public/resources/download",
+        params={"public_key": archive_url}
+    ).json()["href"]
+    
+    # Скачиваем архив
+    archive_data = requests.get(response).content
+    
+    # Создаем подключение к базе данных
+    conn = sqlite3.connect(db_path)
+    
+    # Распаковываем архив и обрабатываем CSV файлы
+    with zipfile.ZipFile(io.BytesIO(archive_data)) as z:
+        # Предполагаем, что имена файлов в архиве соответствуют таблицам
+        file_to_table = {
+            'accidents.csv': 'accidents',
+            'participants.csv': 'participants',
+            'vehicles.csv': 'vehicles'
+        }
+        
+        for file_name in z.namelist():
+            if file_name in file_to_table:
+                with z.open(file_name) as f:
+                    # Читаем CSV и записываем в SQLite
+                    df = pd.read_csv(f, sep=';')
+                    df.to_sql(file_to_table[file_name], conn, if_exists='replace', index=False)
+    return conn
 
 # Агрегация данных
 def aggregate_accidents(data, group_cols, agg_dict):
     return data.groupby(group_cols).agg(agg_dict).reset_index()
  
- # Агрегация данных по регионам
+# Агрегация данных по регионам
 def compute_accident_count(
     df: pd.DataFrame,
     group_col: str = 'region',
@@ -400,7 +436,7 @@ def fetch_accident_features(conn, sql=SQL_ACCIDENT_FEATURES):
     import pandas as pd
     return pd.read_sql_query(sql, conn)
 
-# Переменные для регрессионных моделей
+# Переменные для счетных моделей
 PREDICTORS = [
     'remainder__adverse_weather',
     'remainder__is_weekend',
@@ -442,7 +478,6 @@ def prepare_train_test(df, test_size=0.2, random_state=42):
     return X_train_sm, X_test_sm, y_train, y_test, exp_train, exp_test 
 
 # Обучение регрессионных моделей
-# utils.py
 def fit_negative_binomial(X, y, exposure, method='newton', maxiter=100):
     import numpy as np
     import statsmodels.api as sm
@@ -453,7 +488,7 @@ def fit_negative_binomial(X, y, exposure, method='newton', maxiter=100):
 def fit_poisson(X, y, exposure):
     import numpy as np
     import statsmodels.api as sm
-
+    
     model = sm.GLM(
         endog=y,
         exog=X,
