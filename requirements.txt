@@ -12,8 +12,10 @@ plotly
 geopandas
 
 # Библиотеки ML и статистического моделирования
-sklearn
+scikit-learn
 statsmodels
+joblib
+imbalanced-learn
 
 # Jupyter и интерактивная среда
 jupyter

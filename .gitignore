@@ -10,3 +10,7 @@ __pycache__/
 notebooks/.ipynb_checkpoints/
 .ipynb_checkpoints/
 .virtual_documents/
+
+# Большие файлы моделей
+outputs/models/count_models/negative_binomial_best.pkl
+outputs/models/random_forest/random_forest_best.pkl
